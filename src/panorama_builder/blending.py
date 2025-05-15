@@ -1,86 +1,75 @@
 import numpy as np
 import cv2
 
-def estimate_blur_size(image, smoothing_percent=0.10, min_size=51, max_size=301):
+def single_weights_matrix(shape):
     """
-    Estimate the Gaussian blur kernel size based on a percentage of the image width.
+    Create a weight mask with higher weights in the center and lower on edges.
+    The mask is a 2D tent function that decreases linearly from the center to the edges.
 
     Args:
-        image: The input image (already warped to canvas).
-        smoothing_percent: Fraction of the image width to determine blur size.
-        min_size: Minimum kernel size allowed.
-        max_size: Maximum kernel size allowed.
+        shape: Shape of the image (height, width, channels).
 
     Returns:
-        An odd integer for the blur kernel size.
+        A 2D weight mask with values in [0, 1].
     """
-    # Get the width of the image
-    width = image.shape[1]
-    # Calculate the estimated kernel size based on the width
-    #   and the smoothing percentage
-    estimated = int(smoothing_percent * width)
-    estimated = max(min_size, min(estimated, max_size))
-    # Ensure the kernel size is odd
-    estimated = estimated + 1 if estimated % 2 == 0 else estimated
-    # Return the estimated kernel size
-    return estimated
+    # Create a 2D tent function
+    h, w = shape[:2]
+    x = np.linspace(-1, 1, w)
+    y = np.linspace(-1, 1, h)
+    # Create a meshgrid for 2D tent function
+    xv, yv = np.meshgrid(x, y)
+    # Calculate the weight based on the distance from the center
+    weight = (1 - np.abs(xv)) * (1 - np.abs(yv))  # 2D tent function
+    # Return the weight mask
+    return weight.astype(np.float32)
 
-
-def generate_gaussian_mask(image, smoothing_percent=0.10):
+def blend_images(warped_images):
     """
-    Generate a smooth Gaussian blending mask for a warped image.
+    Blend warped images using center-weighted interpolation inspired by multi-band blending.
 
     Args:
-        image: Warped RGB image.
-        smoothing_percent: Determines blur strength based on image width.
+        warped_images: List of warped images (aligned to same canvas).
 
     Returns:
-        A 2D mask with values in [0, 1], same width and height as the image.
+        Blended panorama image.
     """
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    
-    # Generate a binary mask where pixels are greater than 0
-    mask = (gray > 0).astype(np.float32)
-
-    # Compute the Gaussian blur size based on the image width
-    #   and the smoothing percentage
-    blur_size = estimate_blur_size(image, smoothing_percent)
-    blurred = cv2.GaussianBlur(mask, (blur_size, blur_size), 0)
-    # Normalize the blurred mask to the range [0, 1]
-    normalized = blurred / (blurred.max() + 1e-8)
-    
-    # Return the normalized mask
-    return normalized
-
-
-def blend_images(warped_images, masks):
-    """
-    Blend a list of warped images using Gaussian masks.
-
-    Args:
-        warped_images: List of images aligned to the same canvas.
-        masks: List of normalized masks corresponding to each image.
-
-    Returns:
-        The final blended panorama image.
-    """
-    # Initialize the panorama image and total weights
+    print("INFO | Blending images...")
+    # Get the dimensions of the first warped image
     height, width = warped_images[0].shape[:2]
+    # Initialize panorama and weights
     panorama = np.zeros((height, width, 3), dtype=np.float32)
-    total_weights = np.zeros((height, width), dtype=np.float32)
+    weights = np.zeros((height, width, 1), dtype=np.float32)
+    # Loop through each warped image
+    for img in warped_images:
+        # Convert to float32 and normalize
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        mask = (gray > 0).astype(np.float32) # Create a mask for valid pixels
 
-    # Loop through each warped image and its corresponding mask
-    #   to blend them into the panorama
-    for img, mask in zip(warped_images, masks):
-        for c in range(3):  # For each color channel
-            panorama[:, :, c] += img[:, :, c] * mask
-        total_weights += mask
+        # Generate base weights for the current image
+        base_weights = single_weights_matrix(img.shape)
+        base_weights *= mask
 
-    # Normalize the panorama by the total weights to avoid artifacts
-    total_weights = np.clip(total_weights, 1e-8, None)
-    panorama /= total_weights[:, :, np.newaxis]
+        # Normalize the base weights and generate 3-channel weights
+        base_weights_3c = np.repeat(base_weights[:, :, np.newaxis], 3, axis=2)
+        mask_3c = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
 
-    # Return the blended panorama image
-    #   and convert it to uint8 format
+        # Update the weights and panorama using the mask
+        weight_sum = weights + base_weights[:, :, np.newaxis]
+        normalized_weights = np.divide(weights, weight_sum, where=weight_sum != 0)
+
+        # Update the panorama using the normalized weights
+        panorama = np.where(
+            mask_3c == 0,
+            panorama,
+            img * (1 - normalized_weights) + panorama * normalized_weights
+        )
+
+        # Update the weights
+        weights += base_weights[:, :, np.newaxis]
+
+    # Normalize the panorama to [0, 255]
+    panorama = np.clip(panorama, 0, 255)
+
+    print("SUCCESS | Blending completed.")
+    # Convert to uint8
     return panorama.astype(np.uint8)

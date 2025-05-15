@@ -6,7 +6,7 @@ from panorama_builder.feature_extraction import compute_all_features
 from panorama_builder.matching import match_features
 from panorama_builder.homography import compute_chain_homographies
 from panorama_builder.warping import warp_images
-from panorama_builder.blending import generate_gaussian_mask, blend_images
+from panorama_builder.blending import blend_images
 
 def parse_arguments():
     """
@@ -33,13 +33,6 @@ def parse_arguments():
         help="Path to save the output panorama image (default: 'data/output/panorama.jpg')."
     )
 
-    parser.add_argument(
-        "--smoothing",
-        type=float,
-        default=0.10,
-        help="Smoothing percent for blending masks (default: 0.10)."
-    )
-
     return parser.parse_args()
 
 
@@ -55,7 +48,6 @@ def main():
         raise(f"ERROR | '{folder_path}' is not a directory.")
 
     print(f"- Image folder found: {folder_path}")
-    print(f"- Blending smoothing: {args.smoothing * 100:.1f}%")
     print("--- Starting panorama building ---")
     
     # Step 1: Load images
@@ -92,12 +84,9 @@ def main():
 
     # Step 6: Warp all images to base view
     warped_images, _, _ = warp_images(valid_images, valid_homographies)
-    
-    # Step 7: Generate blending masks
-    masks = [generate_gaussian_mask(warped, smoothing_percent=args.smoothing) for warped in warped_images]
 
-    # Step 8: Blend images
-    panorama = blend_images(warped_images, masks)
+    # Step 7: Blend images
+    panorama = blend_images(warped_images)
 
     # Step 9: Save output
     cv2.imwrite(args.output, cv2.cvtColor(panorama, cv2.COLOR_RGB2BGR))
