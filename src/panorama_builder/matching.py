@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 
 
 def match_features(desc1, desc2, ratio=0.75):
