@@ -51,10 +51,15 @@ def load_images_from_directory(collection_path):
             print(f"WARNING: {image_file} could not be read and will be skipped.")
             continue
         
-         # Convert the image from BGR to RGB format
+        # Convert the image from BGR to RGB format
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # Resize to 50% of original dimensions
+        height, width = rgb_image.shape[:2]
+        resized_image = cv2.resize(rgb_image, (width // 2, height // 2), interpolation=cv2.INTER_AREA)
+
         # Append the image to the list
-        images.append(rgb_image)
+        images.append(resized_image)
         print(f"INFO | Loaded image: {image_file}")
 
     print("SUCCESS | Images loaded successfully.")

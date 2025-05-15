@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 from panorama_builder.utils import get_transformed_corners, compute_offset_and_canvas_size
 
 def warp_images(images, homographies):
