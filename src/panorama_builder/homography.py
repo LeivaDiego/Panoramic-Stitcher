@@ -29,10 +29,10 @@ def compute_homography(kp_base, kp_target, matches, ransac_thresh = 5.0, ransac_
     #   With the reprojection threshold and maximum iterations
 
     H, status = cv2.findHomography(
-        src_points = base_matchpoints, 
-        dst_points = target_matchpoints, 
-        method = cv2.RANSAC, 
-        ransacReprojThreshold = ransac_thresh, 
+        base_matchpoints, 
+        target_matchpoints, 
+        cv2.RANSAC, 
+        ransac_thresh, 
         maxIters = ransac_max_iter
     )
 

@@ -1,5 +1,5 @@
 import cv2
-from utils import get_transformed_corners, compute_offset_and_canvas_size
+from panorama_builder.utils import get_transformed_corners, compute_offset_and_canvas_size
 
 def warp_images(images, homographies):
     """
