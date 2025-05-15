@@ -34,7 +34,7 @@ def warp_images(images, homographies):
         H_total = offset_matrix @ H # Combine the offset matrix with the homography
         # Apply the homography to warp the image
         #   and store the warped image in the list
-        warped = cv2.warpPerspective(img, H_total, canvas_size)
+        warped = cv2.warpPerspective(img, H_total, canvas_size, flags=cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_TRANSPARENT)
         warped_images.append(warped)
 
     print(f"SUCCESS | {len(warped_images)} images warped to canvas size")

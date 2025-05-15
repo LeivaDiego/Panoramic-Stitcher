@@ -6,7 +6,7 @@ from panorama_builder.feature_extraction import compute_all_features
 from panorama_builder.matching import match_features
 from panorama_builder.homography import compute_chain_homographies
 from panorama_builder.warping import warp_images
-from panorama_builder.blending import blend_images
+from panorama_builder.blending import blend_images, apply_color_correction
 
 def parse_arguments():
     """
@@ -82,10 +82,13 @@ def main():
         else:
             print("WARNING | Skipping image due to missing homography.")
 
-    # Step 6: Warp all images to base view
+    # Step 6: Apply color gain compensation
+    apply_color_correction(valid_images, base_idx)
+
+    # Step 7: Warp all images to base view
     warped_images, _, _ = warp_images(valid_images, valid_homographies)
 
-    # Step 7: Blend images
+    # Step 8: Blend images
     panorama = blend_images(warped_images)
 
     # Step 9: Save output
