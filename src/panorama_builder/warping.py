@@ -20,7 +20,7 @@ def warp_images(images, homographies):
     all_corners = []
     for img, H in zip(images, homographies):
         corners = get_transformed_corners(img, H)
-        all_corners.extend(corners)
+        all_corners.append(corners)
 
     # Compute the offset matrix and canvas size
     offset_matrix, canvas_size = compute_offset_and_canvas_size(all_corners)

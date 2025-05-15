@@ -40,32 +40,46 @@ def compute_homography(kp_base, kp_target, matches, ransac_thresh = 5.0, ransac_
     return H, status
 
 
-def compute_all_homographies(features, base_idx, matches_with_base):
+def compute_chain_homographies(features, matches_all, base_idx):
+    """
+    Compute the homography matrices for a chain of images.
     
-    # Initialize an empty list to store homographies
-    homographies = [None] * len(features)
-    # Get the base image features
-    homographies[base_idx] = np.eye(3)  # Identity matrix for the base image
+    Args:
+        features (list): List of features for each image.
+        matches (list): List of matches between images.
+        base_idx (int): Index of the base image.
 
-    # Get the keypoints from the base image
-    kp_base = features[base_idx]["keypoints"]
+    Returns:
+        list: List of homography matrices.
+    """
+    # Compute the homographies for a chain of images.
+    # The base image is the one at index base_idx.
+    n = len(features)
+    homographies = [None] * n
+    homographies[base_idx] = np.eye(3)
 
-    # Loop through each image and compute homography
-    for i, matches in enumerate(matches_with_base):
-        if i == base_idx:
-            continue  # Skip the base image
+    # Left to right
+    for i in range(base_idx - 1, -1, -1):
+        kp1 = features[i]["keypoints"]
+        kp2 = features[i + 1]["keypoints"]
+        match_pair = matches_all[i]
+        H, _ = compute_homography(kp1, kp2, match_pair)
+        if H is None:
+            print(f"WARNING | Homography failed for images {i+1} → {i}")
+            continue
+        homographies[i] = homographies[i + 1] @ H
 
-        # Get the keypoints from the target image
-        kp_target = features[i]["keypoints"]
+    # Right to left
+    for i in range(base_idx + 1, n):
+        kp1 = features[i - 1]["keypoints"]
+        kp2 = features[i]["keypoints"]
+        match_pair = matches_all[i - 1]
+        H, _ = compute_homography(kp1, kp2, match_pair)
+        if H is None:
+            print(f"WARNING | Homography failed for images {i-1} → {i}")
+            continue
+        homographies[i] = homographies[i - 1] @ np.linalg.inv(H)
 
-        # Compute the homography
-        H, status = compute_homography(kp_base, kp_target, matches)
-
-        # Check if the homography is valid
-        if H is not None:
-            homographies[i] = H
-            print(f"INFO | Homography computed for image {i} with base image {base_idx}.")
-        else:
-            print(f"WARNING | Homography computation failed for image {i} with base image {base_idx}.")
+    print("SUCCESS | Homographies computed for all images.")
 
     return homographies

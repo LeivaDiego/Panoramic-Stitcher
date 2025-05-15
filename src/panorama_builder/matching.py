@@ -32,48 +32,5 @@ def match_features(desc1, desc2, ratio=0.75):
 
     # Sort the matches based on the distance
     matches = sorted(matches, key=lambda x: x.distance)
-
     # Return the matches
-    return matches
-
-
-def match_to_base(features, base_index, ratio=0.75):
-    """
-    Match features from all images to a base image.
-    
-    Args:
-        features (list): A list of dictionaries containing image features.
-        base_index (int): The index of the base image in the features list.
-        ratio (float): The ratio threshold for matching.
-
-    Returns:
-        list: A list of dictionaries containing the base image index, 
-              current image index, and matched keypoints.
-    """
-    # Initialize an empty list to store the matches
-    matches = []
-
-    # Get the base image descriptors
-    base_desc = features[base_index]["descriptors"]
-
-    # Loop through each feature set and match to the base image
-    for i, feature in enumerate(features):
-        # Skip the base image itself
-        if i == base_index:
-            continue
-
-        # Get the current image descriptors
-        curr_desc = feature["descriptors"]
-
-        # Match the features between the base and current image
-        matched_keypoints = match_features(base_desc, curr_desc, ratio)
-
-        # Append the matches to the list
-        matches.append({
-            "base_index": base_index,
-            "curr_index": i,
-            "matches": matched_keypoints
-        })
-
-    # Return the list of matches
     return matches

@@ -3,8 +3,8 @@ import argparse
 import cv2
 from panorama_builder.read_images import load_images_from_directory
 from panorama_builder.feature_extraction import compute_all_features
-from panorama_builder.matching import match_to_base
-from panorama_builder.homography import compute_all_homographies
+from panorama_builder.matching import match_features
+from panorama_builder.homography import compute_chain_homographies
 from panorama_builder.warping import warp_images
 from panorama_builder.blending import generate_gaussian_mask, blend_images
 
@@ -68,15 +68,31 @@ def main():
     base_idx = len(features) // 2
     print(f"Using image {base_idx+1} as base image.")
 
-    # Step 4: Match features to base
-    matches_with_base = match_to_base(features, base_idx)
+    # Step 4: Match features between images
+    matches_all = []
+    for i in range(len(features)-1):
+        desc1 = features[i]["descriptors"]
+        desc2 = features[i+1]["descriptors"]
+        matches = match_features(desc1, desc2)
+        print(f"INFO | Matches between image {i} and {i+1}: {len(matches)}")
+        matches_all.append(matches)
 
-    # Step 5: Compute homographies
-    homographies = compute_all_homographies(features, base_idx, [m["matches"] for m in matches_with_base])
+    # Step 5: Compute homographies in a chain
+    homographies = compute_chain_homographies(features, matches_all, base_idx)
+    # Filter out None homographies
+    #   and keep only valid images
+    valid_images = []
+    valid_homographies = []
+    for feat, H in zip(features, homographies):
+        if H is not None:
+            valid_images.append(feat["image"])
+            valid_homographies.append(H)
+        else:
+            print("WARNING | Skipping image due to missing homography.")
 
     # Step 6: Warp all images to base view
-    warped_images, _, _ = warp_images([f["image"] for f in features], homographies)
-
+    warped_images, _, _ = warp_images(valid_images, valid_homographies)
+    
     # Step 7: Generate blending masks
     masks = [generate_gaussian_mask(warped, smoothing_percent=args.smoothing) for warped in warped_images]
 
