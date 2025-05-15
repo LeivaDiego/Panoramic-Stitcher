@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 from panorama_builder.utils import get_transformed_corners, compute_offset_and_canvas_size
 
 def warp_images(images, homographies):
@@ -15,6 +16,7 @@ def warp_images(images, homographies):
             - offset_matrix (np.ndarray): The offset matrix used for warping.
             - canvas_size (tuple): The size of the canvas (width, height).
     """
+    print("INFO | Warping images...")
     # Get the transformed corners of all images
     #   using the homography matrices
     all_corners = []
@@ -35,5 +37,6 @@ def warp_images(images, homographies):
         warped = cv2.warpPerspective(img, H_total, canvas_size)
         warped_images.append(warped)
 
+    print(f"SUCCESS | {len(warped_images)} images warped to canvas size")
     # Return the list of warped images, offset matrix, and canvas size
     return warped_images, offset_matrix, canvas_size
